@@ -1,0 +1,45 @@
+services:
+  db:
+    build:
+      context: ./db
+    container_name: apex-db
+    restart: unless-stopped
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD}
+      APEX_ADMIN_PASSWORD: ${APEX_ADMIN_PASSWORD}
+      APEX_ADMIN_EMAIL: ${APEX_ADMIN_EMAIL}
+      APEX_PUBLIC_USER_PASSWORD: ${APEX_PUBLIC_USER_PASSWORD}
+    volumes:
+      - db-data:/opt/oracle/oradata
+    ports:
+      - "1521:1521"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 5m
+
+  ords:
+    build:
+      context: ./ords
+    container_name: apex-ords
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOSTNAME: db
+      DB_PORT: 1521
+      DB_SERVICENAME: FREEPDB1
+      ORACLE_SYS_PASSWORD: ${ORACLE_PASSWORD}
+      APEX_PUBLIC_USER_PASSWORD: ${APEX_PUBLIC_USER_PASSWORD}
+      ORDS_PUBLIC_USER_PASSWORD: ${ORDS_PUBLIC_USER_PASSWORD}
+    volumes:
+      - ords-config:/etc/ords/config
+    ports:
+      - "8080:8080"
+
+volumes:
+  db-data:
+  ords-config:
