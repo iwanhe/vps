@@ -1,0 +1,12 @@
+# Real secrets for any service — only .env.example files are committed.
+.env
+.env.*
+!.env.example
+
+# Common editor/OS junk
+.DS_Store
+*.swp
+
+# Backups and local overrides nobody should commit by accident
+*.bak
+*.local
