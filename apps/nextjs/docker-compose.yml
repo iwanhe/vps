@@ -5,7 +5,11 @@ services:
       dockerfile: Dockerfile
     container_name: nextjs
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    networks:
+      - edge
     environment:
       - NODE_ENV=production
+
+networks:
+  edge:
+    external: true
