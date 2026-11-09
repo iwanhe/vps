@@ -15,8 +15,10 @@ infrastructure/  # shared infra (see infrastructure/README.md)
   proxy/caddy/   # the only public entry point
 scripts/
   create-edge-network.sh
+  deploy.sh      # run by .github/workflows/deploy.yml over SSH
 docs/
   security/      # baseline.md — run once on the real VPS
+  operations/    # deploy.md — GitHub Actions deploy setup
 ```
 
 ## Prerequisites
@@ -117,6 +119,15 @@ docker compose up -d
 See [`infrastructure/proxy/caddy/README.md`](infrastructure/proxy/caddy/README.md)
 for prerequisites (DNS, open ports) and how to add another app to it.
 
+### Deploying from GitHub (`.github/workflows/deploy.yml`)
+
+Pushes to `main` can deploy themselves — SSH into the VPS, pull, and run
+`scripts/deploy.sh` (which skips any service that isn't configured yet
+instead of breaking). See
+[`docs/operations/deploy.md`](docs/operations/deploy.md) for the one-time
+setup (a deploy user on the VPS, GitHub repository secrets) this needs
+before the first run.
+
 ## Running them all at once
 
 All three can run on the same VPS side by side with no conflicts: `apps/nextjs`
@@ -136,7 +147,7 @@ once:
 | WP1 | Repo restructure (`apps/`/`databases/`/`infrastructure/`) + security baseline | ✅ done |
 | WP2 | Docker network isolation (stop publishing app/DB ports straight to the host) | ✅ done |
 | WP3 | Caddy — reverse proxy, automatic HTTPS, domain routing | ✅ done |
-| WP4 | GitHub Actions + SSH deploy runner | planned |
+| WP4 | GitHub Actions + SSH deploy runner | ✅ done |
 | WP5 | Restic — backup & restore (including a safe Oracle backup method) | planned |
 | WP6 | Tailscale — private admin access to SSH/DBs/dashboards | ⏭️ skipped for now |
 | WP7 | Uptime Kuma — availability monitoring | ⏭️ skipped for now |
