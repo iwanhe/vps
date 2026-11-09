@@ -110,10 +110,32 @@ once:
 | WP3 | Caddy — reverse proxy, automatic HTTPS, domain routing | planned |
 | WP4 | GitHub Actions + SSH deploy runner | planned |
 | WP5 | Restic — backup & restore (including a safe Oracle backup method) | planned |
-| WP6 | Tailscale — private admin access to SSH/DBs/dashboards | planned |
-| WP7 | Uptime Kuma — availability monitoring | planned |
-| WP8 | Prometheus + Grafana (or a lighter alternative) — metrics | planned |
-| WP9+ | Centralized logging, Authentik SSO, CrowdSec, Trivy — only if a real need shows up | later |
+| WP6 | Tailscale — private admin access to SSH/DBs/dashboards | ⏭️ skipped for now |
+| WP7 | Uptime Kuma — availability monitoring | ⏭️ skipped for now |
+| WP8 | Prometheus + Grafana (or a lighter alternative) — metrics | ⏭️ skipped for now |
+| WP9+ | Centralized logging, Authentik SSO, CrowdSec, Trivy | ⏭️ skipped for now |
 
 See [`infrastructure/README.md`](infrastructure/README.md) for where each
 of these will live once built.
+
+### Skipped for now (WP6–WP9+)
+
+Deliberately deferred — each has a plain workaround that covers the
+same need without the extra service, until one of these stops being
+enough:
+
+- **WP6 (Tailscale)**: once WP2 lands, DB ports aren't published to the
+  internet at all — an SSH tunnel (`ssh -L 5432:localhost:5432 ...`)
+  covers occasional admin access. Revisit if that becomes a regular
+  routine rather than occasional.
+- **WP7 (Uptime Kuma)**: a free external checker (UptimeRobot, Better
+  Uptime) covers "is it up" without self-hosting anything. Revisit if
+  integrated alerting or not sending URLs to a third party matters.
+- **WP8 (Prometheus + Grafana)**: `docker stats` covers "is a container
+  eating resources" for this few services. Revisit only after an actual
+  incident that a metrics history would have helped diagnose.
+- **WP9+ (logging, Authentik, CrowdSec, Trivy)**: no app needs
+  cross-service SSO or centralized logs yet, and there's no sign of
+  active attacks to mitigate. Revisit if the number of apps makes
+  per-app logins painful, or if logs genuinely need to be correlated
+  across services to debug something.
