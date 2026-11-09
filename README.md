@@ -14,6 +14,7 @@ inside the containers.
 | --- | --- | --- |
 | [`nextjs/`](nextjs/) | A Next.js app (standalone Docker build) | 3000 |
 | [`apex/`](apex/) | Oracle Database + ORDS, serving Oracle APEX | 8080 (APEX), 1521 (DB) |
+| [`postgres/`](postgres/) | PostgreSQL (official image) | 5432 |
 
 Each folder is independent — its own `Dockerfile`(s) and `docker-compose.yml`,
 run from inside that folder. See that folder's own `README.md` for details
@@ -54,10 +55,23 @@ Full details (why the DB image has to be the "full" flavor, what each
 password in `.env` is actually for, how to redo the install from scratch)
 are in [`apex/README.md`](apex/README.md).
 
-## Running both at once
+### PostgreSQL (`postgres/`)
 
-Both services bind their own ports (3000 vs 8080/1521) and have no shared
-state, so `nextjs/` and `apex/` can run on the same VPS side by side —
-just `docker compose up -d --build` in each folder. If you put a reverse
-proxy (nginx/Caddy) in front for TLS/domains, route it to each service's
-container port.
+```bash
+cd postgres
+cp .env.example .env
+# edit .env — set real values
+docker compose up -d
+```
+
+Connect with `psql -h <host> -p 5432 -U <POSTGRES_USER> -d <POSTGRES_DB>`.
+See [`postgres/README.md`](postgres/README.md) for persistence and network
+notes.
+
+## Running them all at once
+
+Each service binds its own port(s) (3000, 8080/1521, 5432) and has no
+shared state, so `nextjs/`, `apex/`, and `postgres/` can all run on the
+same VPS side by side — just `docker compose up -d --build` in each
+folder. If you put a reverse proxy (nginx/Caddy) in front for TLS/domains,
+route it to each service's container port.
