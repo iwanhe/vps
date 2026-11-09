@@ -12,6 +12,11 @@ if [ -z "${APEX_ADMIN_PASSWORD:-}" ]; then
   exit 1
 fi
 
+if [ -z "${APEX_PUBLIC_USER_PASSWORD:-}" ]; then
+  echo "CONTAINER: APEX_PUBLIC_USER_PASSWORD is not set, refusing to install APEX without it." >&2
+  exit 1
+fi
+
 # cd + relative paths matters here: when @ is fed through stdin (as below)
 # rather than given to sqlplus as a command-line argument, nested @@
 # includes inside apexins.sql/apxchpwd.sql resolve against the process's
@@ -50,6 +55,19 @@ BEGIN
   COMMIT;
 END;
 /
+exit
+SQL
+
+echo "CONTAINER: Setting the APEX_PUBLIC_USER password (needed by ORDS's PL/SQL gateway, 'direct' mode) ..."
+# apexins.sql gives APEX_PUBLIC_USER a random password with no way to
+# retrieve it, but ORDS's gateway-mode=direct connects AS this user with
+# an actual password (confirmed by testing: `ords install --gateway-user
+# APEX_PUBLIC_USER` fails with ORA-01017 unless this user's password is
+# a known value matching what's fed to ords install on the other side).
+sqlplus -s / as sysdba <<SQL
+whenever sqlerror exit failure
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
+ALTER USER APEX_PUBLIC_USER IDENTIFIED BY "${APEX_PUBLIC_USER_PASSWORD}";
 exit
 SQL
 
