@@ -11,7 +11,10 @@ apps/            # application runtimes
   apex/
 databases/       # database services
   postgres/
-infrastructure/  # shared infra — empty until WP3+ (see infrastructure/README.md)
+infrastructure/  # shared infra (see infrastructure/README.md)
+  proxy/caddy/   # the only public entry point
+scripts/
+  create-edge-network.sh
 docs/
   security/      # baseline.md — run once on the real VPS
 ```
@@ -100,6 +103,20 @@ SSH tunnel from elsewhere. See
 [`databases/postgres/README.md`](databases/postgres/README.md) for
 details.
 
+### Reverse proxy (`infrastructure/proxy/caddy/`)
+
+The single public entry point, once a real domain is pointed at this VPS:
+
+```bash
+cd infrastructure/proxy/caddy
+cp .env.example .env
+# edit .env — real domains (with DNS already set up) + an email for Let's Encrypt
+docker compose up -d
+```
+
+See [`infrastructure/proxy/caddy/README.md`](infrastructure/proxy/caddy/README.md)
+for prerequisites (DNS, open ports) and how to add another app to it.
+
 ## Running them all at once
 
 All three can run on the same VPS side by side with no conflicts: `apps/nextjs`
@@ -118,7 +135,7 @@ once:
 | --- | --- | --- |
 | WP1 | Repo restructure (`apps/`/`databases/`/`infrastructure/`) + security baseline | ✅ done |
 | WP2 | Docker network isolation (stop publishing app/DB ports straight to the host) | ✅ done |
-| WP3 | Caddy — reverse proxy, automatic HTTPS, domain routing | planned |
+| WP3 | Caddy — reverse proxy, automatic HTTPS, domain routing | ✅ done |
 | WP4 | GitHub Actions + SSH deploy runner | planned |
 | WP5 | Restic — backup & restore (including a safe Oracle backup method) | planned |
 | WP6 | Tailscale — private admin access to SSH/DBs/dashboards | ⏭️ skipped for now |
