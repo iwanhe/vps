@@ -23,9 +23,17 @@ VPS. Nothing else needs to be installed on the host — everything else
 builds inside the containers.
 
 **Before exposing anything publicly**, see
-[`docs/security/baseline.md`](docs/security/baseline.md) — right now every
-service below publishes its ports straight to `0.0.0.0`; there's no
-shared firewall or reverse proxy yet (that's WP2/WP3 below).
+[`docs/security/baseline.md`](docs/security/baseline.md) for the VPS-level
+firewall setup. On the Docker side: `apps/nextjs` and `apex`'s `ords`
+don't publish any port at all — they're only reachable through Caddy
+(below) over a shared `edge` network, which has to exist first:
+
+```bash
+./scripts/create-edge-network.sh   # one-time
+```
+
+`apex`'s `db` and `databases/postgres` bind their ports to `127.0.0.1`
+only (admin access via SSH tunnel) — see each folder's own `README.md`.
 
 ## Services
 
@@ -54,7 +62,9 @@ cd apps/nextjs
 docker compose up -d --build
 ```
 
-Open `http://<host>:3000`.
+No port is published — it's only reachable through Caddy once that's set
+up (below). For local testing without Caddy, see
+[`apps/nextjs/README.md`](apps/nextjs/README.md).
 
 ### Oracle APEX (`apps/apex/`)
 
@@ -67,9 +77,9 @@ docker compose up -d --build
 
 First boot installs Oracle APEX into the database, which takes tens of
 minutes — watch progress with `docker compose logs -f db`, then
-`docker compose logs -f ords`. Once ORDS reports it's initialized, open
-`http://<host>:8080/ords/` and log in to workspace `INTERNAL` as `ADMIN`
-with `APEX_ADMIN_PASSWORD` from `.env`.
+`docker compose logs -f ords`. `ords` doesn't publish a port either — once
+Caddy is set up and pointed at it, log in at your domain's `/ords/` path
+to workspace `INTERNAL` as `ADMIN` with `APEX_ADMIN_PASSWORD` from `.env`.
 
 Full details (why the DB image has to be the "full" flavor, what each
 password in `.env` is actually for, how to redo the install from scratch)
@@ -84,18 +94,19 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Connect with `psql -h <host> -p 5432 -U <POSTGRES_USER> -d <POSTGRES_DB>`.
-See [`databases/postgres/README.md`](databases/postgres/README.md) for
-persistence and network notes.
+The port is bound to `127.0.0.1` only — connect with `psql -h localhost -p
+5432 -U <POSTGRES_USER> -d <POSTGRES_DB>` from the VPS itself, or via an
+SSH tunnel from elsewhere. See
+[`databases/postgres/README.md`](databases/postgres/README.md) for
+details.
 
 ## Running them all at once
 
-Each service binds its own port(s) (3000, 8080/1521, 5432) and has no
-shared state, so `apps/nextjs/`, `apps/apex/`, and `databases/postgres/`
-can all run on the same VPS side by side — just `docker compose up -d
---build` in each folder. This is the current, temporary state: once WP2
-(network isolation) and WP3 (Caddy) below land, these won't publish ports
-straight to the host anymore.
+All three can run on the same VPS side by side with no conflicts: `apps/nextjs`
+and `apex`'s `ords` share the `edge` network (fronted by Caddy, no direct
+host port), while `apex`'s `db` and `databases/postgres` each bind their
+own port to `127.0.0.1` only. Just `docker compose up -d --build` in each
+folder, after `./scripts/create-edge-network.sh` once.
 
 ## Roadmap
 
@@ -106,7 +117,7 @@ once:
 | WP | What | Status |
 | --- | --- | --- |
 | WP1 | Repo restructure (`apps/`/`databases/`/`infrastructure/`) + security baseline | ✅ done |
-| WP2 | Docker network isolation (stop publishing app/DB ports straight to the host) | planned |
+| WP2 | Docker network isolation (stop publishing app/DB ports straight to the host) | ✅ done |
 | WP3 | Caddy — reverse proxy, automatic HTTPS, domain routing | planned |
 | WP4 | GitHub Actions + SSH deploy runner | planned |
 | WP5 | Restic — backup & restore (including a safe Oracle backup method) | planned |

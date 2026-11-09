@@ -12,11 +12,19 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Connect with `psql` (or any Postgres client) at `localhost:5432` using the
+The port is bound to `127.0.0.1` only (not public). From the VPS itself,
+connect with `psql` (or any Postgres client) using the
 `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` from `.env`:
 
 ```bash
 psql -h localhost -p 5432 -U <POSTGRES_USER> -d <POSTGRES_DB>
+```
+
+From elsewhere, open an SSH tunnel first, then connect to `localhost:5432`
+as above:
+
+```bash
+ssh -L 5432:localhost:5432 <user>@<vps>
 ```
 
 ## Notes
@@ -33,7 +41,6 @@ psql -h localhost -p 5432 -U <POSTGRES_USER> -d <POSTGRES_DB>
   or connect to `localhost:5432` (or the VPS's address) like any other
   client — there's no default shared network between separate `docker
   compose up` projects.
-- This isn't exposed with TLS. For access from outside the VPS, prefer an
-  SSH tunnel or a VPN over opening 5432 to the internet; Postgres's own
-  `sslmode=require` needs extra certificate setup this compose file doesn't
-  do.
+- This isn't exposed with TLS. Postgres's own `sslmode=require` needs
+  extra certificate setup this compose file doesn't do — the SSH tunnel
+  above is what stands in for that.
