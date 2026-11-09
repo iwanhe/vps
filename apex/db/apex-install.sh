@@ -12,22 +12,44 @@ if [ -z "${APEX_ADMIN_PASSWORD:-}" ]; then
   exit 1
 fi
 
+# cd + relative paths matters here: when @ is fed through stdin (as below)
+# rather than given to sqlplus as a command-line argument, nested @@
+# includes inside apexins.sql/apxchpwd.sql resolve against the process's
+# CWD, not the path given to the top-level @ — an absolute path breaks
+# every @@ inside the script with "SP2-0310: unable to open file" (confirmed
+# by testing both ways).
+cd /opt/apex
+
 echo "CONTAINER: Installing Oracle APEX into PDB ${PDB_NAME} (this takes a while) ..."
 sqlplus -s / as sysdba <<SQL
 whenever sqlerror exit failure
 ALTER SESSION SET CONTAINER = ${PDB_NAME};
-@/opt/apex/apexins.sql SYSAUX SYSAUX TEMP /i/
+@apexins.sql SYSAUX SYSAUX TEMP /i/
 exit
 SQL
 
 echo "CONTAINER: Setting the APEX workspace admin (ADMIN) password ..."
+# Not using apxchpwd.sql directly: its ACCEPT ... HIDE prompts don't read
+# correctly when stdin isn't a real TTY (confirmed by testing — it always
+# reports "ORA-20001: Invalid password" no matter the password supplied,
+# even though the same underlying API call below works fine). Call the
+# same API it calls, directly, instead.
+ESCAPED_PASSWORD="${APEX_ADMIN_PASSWORD//\'/\'\'}"
+ESCAPED_EMAIL="${ADMIN_EMAIL//\'/\'\'}"
 sqlplus -s / as sysdba <<SQL
 whenever sqlerror exit failure
 ALTER SESSION SET CONTAINER = ${PDB_NAME};
-@/opt/apex/apxchpwd.sql
-ADMIN
-${ADMIN_EMAIL}
-${APEX_ADMIN_PASSWORD}
+@@core/scripts/set_appun.sql
+ALTER SESSION SET CURRENT_SCHEMA = &APPUN;
+SET DEFINE OFF
+BEGIN
+  wwv_flow_instance_admin.create_or_update_admin_user(
+    p_username => 'ADMIN',
+    p_email    => '${ESCAPED_EMAIL}',
+    p_password => '${ESCAPED_PASSWORD}' );
+  COMMIT;
+END;
+/
 exit
 SQL
 
