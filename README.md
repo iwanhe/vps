@@ -309,12 +309,13 @@ for prerequisites (DNS, open ports) and how to add another app to it.
 
 ### Deploying from GitHub (`.github/workflows/deploy.yml`)
 
-Pushes to `main` can deploy themselves — SSH into the VPS, pull, and run
-`scripts/deploy.sh` (which skips any service that isn't configured yet
-instead of breaking). See
-[`docs/operations/deploy.md`](docs/operations/deploy.md) for the one-time
-setup (a deploy user on the VPS, GitHub repository secrets) this needs
-before the first run.
+SSHes into the VPS, pulls, and runs `scripts/deploy.sh` (which skips any
+service that isn't configured yet instead of breaking). **Currently
+manual-only** (Actions tab → Deploy to VPS → Run workflow) until the VPS
+side is set up — see [`docs/operations/deploy.md`](docs/operations/deploy.md)
+for the one-time setup (a deploy user on the VPS, GitHub repository
+secrets) and how to turn on automatic deploys on every push once that's
+done.
 
 ### Backup (`backup/restic/`)
 

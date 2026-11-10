@@ -1,8 +1,17 @@
 name: Deploy to VPS
 
+# Manual-only for now (workflow_dispatch): it was auto-running on every
+# push to main and failing every time, because the GitHub repository
+# secrets it needs (VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_REPO_PATH) don't
+# exist yet — see docs/operations/deploy.md. Once those are set and a
+# manual run (Actions tab -> Deploy to VPS -> Run workflow) has been
+# watched succeed at least once, restore the `push` trigger below:
+#
+# on:
+#   push:
+#     branches: [main]
+#   workflow_dispatch: {}
 on:
-  push:
-    branches: [main]
   workflow_dispatch: {}
 
 jobs:
