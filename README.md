@@ -16,6 +16,8 @@ infrastructure/  # shared infra (see infrastructure/README.md)
 scripts/
   create-edge-network.sh
   deploy.sh      # run by .github/workflows/deploy.yml over SSH
+backup/
+  restic/        # backup-*.sh / restore-*.sh for postgres and apex's db
 docs/
   security/      # baseline.md — run once on the real VPS
   operations/    # deploy.md — GitHub Actions deploy setup
@@ -128,6 +130,22 @@ instead of breaking). See
 setup (a deploy user on the VPS, GitHub repository secrets) this needs
 before the first run.
 
+### Backup (`backup/restic/`)
+
+```bash
+cd backup/restic
+cp .env.example .env
+# edit .env — a real off-box RESTIC_REPOSITORY, a password, which schemas to back up
+./backup-postgres.sh
+./backup-oracle.sh
+```
+
+Restores (disaster recovery) with `./restore-postgres.sh` /
+`./restore-oracle.sh`. See
+[`backup/restic/README.md`](backup/restic/README.md) — nothing in this
+repo runs these on a schedule yet, so put them on a cron job or a
+scheduled GitHub Actions workflow.
+
 ## Running them all at once
 
 All three can run on the same VPS side by side with no conflicts: `apps/nextjs`
@@ -148,7 +166,7 @@ once:
 | WP2 | Docker network isolation (stop publishing app/DB ports straight to the host) | ✅ done |
 | WP3 | Caddy — reverse proxy, automatic HTTPS, domain routing | ✅ done |
 | WP4 | GitHub Actions + SSH deploy runner | ✅ done |
-| WP5 | Restic — backup & restore (including a safe Oracle backup method) | planned |
+| WP5 | Restic — backup & restore (including a safe Oracle backup method) | ✅ done |
 | WP6 | Tailscale — private admin access to SSH/DBs/dashboards | ⏭️ skipped for now |
 | WP7 | Uptime Kuma — availability monitoring | ⏭️ skipped for now |
 | WP8 | Prometheus + Grafana (or a lighter alternative) — metrics | ⏭️ skipped for now |
