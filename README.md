@@ -23,6 +23,192 @@ docs/
   operations/    # deploy.md — GitHub Actions deploy setup
 ```
 
+## Panduan Lengkap untuk Pemula (Step by Step)
+
+Bagian ini untuk yang belum pernah pegang VPS/Docker sama sekali. Ikuti
+urutannya dari atas — tiap langkah dibangun di atas langkah sebelumnya.
+Semua perintah dijalankan **di VPS**, lewat SSH, bukan di laptop kamu
+(kecuali disebutkan lain).
+
+### Yang harus sudah kamu punya sebelum mulai
+
+- **VPS** dengan akses root/sudo (minimal 2GB RAM kalau cuma Next.js +
+  Postgres; minimal 4GB RAM kalau juga mau pakai Oracle APEX, karena
+  Oracle Database sendiri sudah butuh 2-4GB).
+- **Alamat IP VPS** dan **password/private key SSH**-nya (biasanya
+  dikirim oleh penyedia VPS saat kamu order).
+- **Domain** (misal `contoh.com`) — wajib kalau mau app-nya bisa dibuka
+  orang lain lewat browser dengan HTTPS. Kalau cuma mau coba-coba sendiri
+  dulu, boleh skip ini (langkah Caddy di bawah jadi opsional).
+- Aplikasi **terminal** di laptop kamu untuk SSH: Terminal (Mac/Linux)
+  atau PowerShell/PuTTY (Windows).
+
+### Langkah 1 — Masuk ke VPS
+
+Dari laptop kamu:
+
+```bash
+ssh root@ALAMAT_IP_VPS_KAMU
+```
+
+Ganti `ALAMAT_IP_VPS_KAMU` dengan IP asli VPS-nya. Masukkan password
+kalau diminta. Kalau berhasil, prompt terminal akan berubah menunjukkan
+kamu sudah "di dalam" VPS.
+
+### Langkah 2 — Install Docker
+
+Docker adalah program yang menjalankan semua service di repo ini di
+dalam "kotak" terisolasi (container), jadi masing-masing tidak akan
+bentrok satu sama lain. Jalankan:
+
+```bash
+curl -fsSL https://get.docker.com | sh
+```
+
+Tunggu sampai selesai (beberapa menit). Cek berhasil dengan:
+
+```bash
+docker --version
+docker compose version
+```
+
+Keduanya harus menampilkan nomor versi, bukan error "command not found".
+
+### Langkah 3 — Amankan VPS dulu sebelum lanjut
+
+**Jangan skip langkah ini** — tanpa ini, VPS kamu terbuka ke seluruh
+internet begitu service mulai jalan. Buka
+[`docs/security/baseline.md`](docs/security/baseline.md) dan jalankan
+perintah-perintah di bagian "Firewall (ufw)" dan "SSH" di sana satu per
+satu. Ringkasnya: pasang firewall yang cuma mengizinkan SSH masuk, lalu
+matikan login SSH pakai password (ganti dengan key) kalau belum.
+
+### Langkah 4 — Ambil (clone) repo ini ke VPS
+
+```bash
+git clone https://github.com/iwanhe/vps.git
+cd vps
+```
+
+Sekarang semua file di repo ini ada di VPS kamu, di folder `vps/`.
+
+### Langkah 5 — Buat "jalur" bersama untuk app yang akan diakses publik
+
+```bash
+./scripts/create-edge-network.sh
+```
+
+Ini sekali jalan saja (aman dijalankan ulang, tidak akan error kedua
+kalinya). Ini membuat jaringan Docker bernama `edge` yang nanti
+dipakai bersama oleh Caddy (langkah 7) dan app yang mau diakses dari
+luar (Next.js, APEX).
+
+### Langkah 6 — Jalankan service yang kamu butuhkan
+
+Kamu tidak harus pakai semuanya. Pilih sesuai kebutuhan:
+
+**Kalau butuh PostgreSQL** (database untuk aplikasi):
+
+```bash
+cd databases/postgres
+cp .env.example .env
+nano .env   # ganti POSTGRES_PASSWORD dengan password asli, simpan dengan Ctrl+O lalu Ctrl+X
+docker compose up -d
+cd ../..
+```
+
+**Kalau butuh Oracle APEX** (untuk aplikasi berbasis Oracle APEX):
+
+```bash
+cd apps/apex
+cp .env.example .env
+nano .env   # isi semua password dengan password asli
+docker compose up -d --build
+```
+
+Proses instalasi APEX ke database **butuh waktu belasan-puluhan menit**
+pada percobaan pertama — ini normal, bukan macet. Pantau progressnya:
+
+```bash
+docker compose logs -f db
+```
+
+Tekan `Ctrl+C` untuk berhenti memantau (service tetap jalan di
+background). Setelah selesai:
+
+```bash
+cd ../..
+```
+
+**Kalau butuh aplikasi Next.js**:
+
+```bash
+cd apps/nextjs
+docker compose up -d --build
+cd ../..
+```
+
+### Langkah 7 — Supaya bisa diakses lewat domain dengan HTTPS (Caddy)
+
+Lewati langkah ini kalau kamu belum punya domain.
+
+**Sebelum lanjut**, arahkan domain kamu ke VPS ini dulu lewat panel DNS
+penyedia domain kamu: buat **A record** yang mengarah ke alamat IP VPS
+kamu. Misalnya `app.contoh.com` → IP VPS kamu. Ini biasanya butuh
+beberapa menit sampai beberapa jam untuk aktif (disebut "propagasi DNS").
+
+Setelah domain mengarah ke VPS:
+
+```bash
+cd infrastructure/proxy/caddy
+cp .env.example .env
+nano .env   # ganti NEXTJS_DOMAIN/APEX_DOMAIN dengan domain asli kamu, dan ACME_EMAIL dengan email kamu
+docker compose up -d
+docker compose logs -f caddy
+```
+
+Di log, tunggu sampai muncul tulisan terkait sertifikat berhasil dibuat
+("certificate obtained successfully" atau sejenisnya). Setelah itu,
+coba buka domain kamu di browser (`https://app.contoh.com`) — harusnya
+sudah muncul dengan gembok HTTPS otomatis.
+
+### Langkah 8 (opsional) — Backup otomatis
+
+Sangat disarankan begitu ada data asli (bukan cuma coba-coba) di
+Postgres/Oracle. Ikuti [`backup/restic/README.md`](backup/restic/README.md),
+lalu jadwalkan `backup-postgres.sh`/`backup-oracle.sh` lewat `cron` di
+VPS supaya jalan otomatis tiap hari, misalnya:
+
+```bash
+crontab -e
+```
+
+Tambahkan baris ini (backup tiap hari jam 2 pagi — sesuaikan path
+`/root/vps` dengan lokasi clone repo kamu):
+
+```
+0 2 * * * /root/vps/backup/restic/backup-postgres.sh >> /var/log/backup-postgres.log 2>&1
+```
+
+### Langkah 9 (opsional) — Deploy otomatis dari GitHub
+
+Kalau kamu nanti mengubah sesuatu di repo ini (lewat GitHub) dan ingin
+perubahannya otomatis sampai ke VPS tanpa SSH manual setiap kali, ikuti
+[`docs/operations/deploy.md`](docs/operations/deploy.md).
+
+### Kalau ada yang tidak jalan
+
+- **Cek service masih hidup**: `docker compose ps` di dalam folder
+  service yang bermasalah. Kolom `STATUS` harus `Up` (atau `Up (healthy)`).
+- **Lihat pesan error**: `docker compose logs` (tanpa `-f` supaya tidak
+  terus mengikuti, langsung tampil semua lalu berhenti).
+- **Ulangi dari awal untuk satu service** (data ikut terhapus — hanya
+  lakukan kalau memang mau mulai ulang):
+  ```bash
+  docker compose down -v
+  docker compose up -d --build
+  ```
+
 ## Prerequisites
 
 Docker Engine with the Compose plugin (`docker compose version`) on the
