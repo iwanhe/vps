@@ -1,10 +1,15 @@
 # Deploying to the VPS
 
-`.github/workflows/deploy.yml` runs on every push to `main` (and can be
-triggered manually from the Actions tab): it SSHes into the VPS, fetches
-and hard-resets to `origin/main`, then runs `./scripts/deploy.sh`, which
+`.github/workflows/deploy.yml` SSHes into the VPS, fetches and
+hard-resets to `origin/main`, then runs `./scripts/deploy.sh`, which
 rebuilds and (re)starts every service that already has a real `.env` —
 anything still only configured via `.env.example` is skipped, not broken.
+
+**Currently manual-only** (`workflow_dispatch` from the Actions tab) —
+it isn't wired to run on every push yet, because it was failing every
+time with no VPS/secrets to actually deploy to. Do the one-time setup
+below, run it manually once, and watch it succeed before restoring the
+`push` trigger (the workflow file says exactly what to uncomment).
 
 ## One-time setup on the VPS
 
