@@ -42,10 +42,17 @@ ships the files needed to run `node server.js` — no full `node_modules` or sou
 tree in the final image.
 
 ```bash
+../../scripts/create-edge-network.sh   # one-time, skip if already done
 docker compose up -d --build
 ```
 
-Or without Compose:
+This joins the shared `edge` Docker network instead of publishing port
+3000 to the host — the only way in is through Caddy
+([`infrastructure/proxy/caddy/`](../../infrastructure/proxy/caddy/)),
+which reverse-proxies to `nextjs:3000` over that network.
+
+For local testing without Caddy, run it standalone instead (this does
+publish the port):
 
 ```bash
 docker build -t nextjs-app .

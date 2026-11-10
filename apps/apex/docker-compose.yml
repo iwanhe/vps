@@ -12,7 +12,10 @@ services:
     volumes:
       - db-data:/opt/oracle/oradata
     ports:
-      - "1521:1521"
+      # Admin-only: bound to loopback, not published to the internet.
+      # Reach it from outside via an SSH tunnel:
+      #   ssh -L 1521:localhost:1521 <user>@<vps>
+      - "127.0.0.1:1521:1521"
     healthcheck:
       test: ["CMD", "healthcheck.sh"]
       interval: 30s
@@ -37,9 +40,15 @@ services:
       ORDS_PUBLIC_USER_PASSWORD: ${ORDS_PUBLIC_USER_PASSWORD}
     volumes:
       - ords-config:/etc/ords/config
-    ports:
-      - "8080:8080"
+    networks:
+      - default
+      - edge
 
 volumes:
   db-data:
   ords-config:
+
+networks:
+  default: {}
+  edge:
+    external: true

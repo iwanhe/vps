@@ -21,6 +21,8 @@ Stick with `full`.
 ## Usage
 
 ```bash
+../../scripts/create-edge-network.sh   # one-time, skip if already done
+
 cp .env.example .env
 # edit .env — set real passwords
 
@@ -42,9 +44,16 @@ its database objects) and starts serving:
 docker compose logs -f ords
 ```
 
-Open `http://<host>:8080/ords/` and log in to workspace `INTERNAL` as user
-`ADMIN` with `APEX_ADMIN_PASSWORD` from `.env` to create your own workspace
-and application.
+`ords` doesn't publish a port — it only joins the shared `edge` Docker
+network, so the only way to reach it is through Caddy
+([`infrastructure/proxy/caddy/`](../../infrastructure/proxy/caddy/)). Once
+that's up, log in at your configured domain's `/ords/` path to workspace
+`INTERNAL` as user `ADMIN` with `APEX_ADMIN_PASSWORD` from `.env`.
+
+To check `ords` directly without going through Caddy first (e.g. to debug
+a first install), exec into any container already on the `edge` network
+and curl `http://apex-ords:8080/ords/` — there's no host-mapped port to
+hit from outside Docker.
 
 ## Notes
 
@@ -60,8 +69,10 @@ and application.
   (ORDS's PL/SQL gateway connects to the DB as this user); `ORDS_PUBLIC_USER_PASSWORD`
   is managed entirely by the `ords` container itself, nothing on the `db`
   side needs to match it.
-- Put a reverse proxy (nginx/Caddy) in front of `ords` for TLS on a real
-  VPS; this compose file only exposes plain HTTP on 8080.
+- `db`'s port (1521) is bound to `127.0.0.1` only — reach it from outside
+  the VPS with `ssh -L 1521:localhost:1521 <user>@<vps>`, then connect to
+  `localhost:1521` locally. It was never meant to be public, and isn't
+  fronted by Caddy (that's for HTTP, not raw TCP).
 - This whole stack — `db`'s APEX install, `ords`'s schema install, and
   `ords serve` serving the login page and static assets — was run
   end-to-end against a live `gvenzl/oracle-free` container while building
